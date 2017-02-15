@@ -12,7 +12,8 @@
 static struct {
     unsigned long xlen;
     int show_old_samples;
-} args = {100000, 1};
+    const char* file;
+} args = {100000, 1, NULL};
 
 double real_clock() {
     struct timeval now;
@@ -114,8 +115,19 @@ void keyboardFunc(unsigned char k, int x, int y) {
 void* incoming_data_loop(void* arg) {
     (void) arg;
 
+    FILE* f;
+    if (args.file != NULL) {
+        f = fopen(args.file, "r");
+        if (f == NULL) {
+            usage("could not open file '%s'", args.file);
+        }
+    } else {
+        f = stdin;
+    }
+
+    // read file until exhaustion
     while (1) {
-        int value = fgetc(stdin);
+        int value = fgetc(f);
         if (value == EOF) {
             break;
         }
@@ -126,13 +138,13 @@ void* incoming_data_loop(void* arg) {
         }
     }
 
-    fclose(stdin);  // TODO: try and reconnect
+    fclose(f);  // TODO: try and reconnect
     return NULL;
 }
 
 static void argparse(int argc, char** argv) {
     usage_string = (
-    "Usage: %s [OPTIONS]\n"
+    "Usage: %s [OPTIONS] [FILE]\n"
     "Draw a real-time graph\n"
     "\n"
     "  -h --help          display this help and exit\n"
@@ -141,6 +153,7 @@ static void argparse(int argc, char** argv) {
     "  -k --keep-old      keep old samples on screen when\n"
     );
 
+    size_t positional_arguments_read = 0;
     arginfo.argc = argc;
     arginfo.argv = argv;
     for (arginfo.argi = 1; arginfo.argi < argc; arginfo.argi++) {
@@ -155,6 +168,9 @@ static void argparse(int argc, char** argv) {
             args.show_old_samples = 1;
         } else if (arginfo.arg[0] == '-') {
             usage("unknown option '%s'", arginfo.arg);
+        } else if (positional_arguments_read == 0) {
+            args.file = arginfo.arg;
+            positional_arguments_read += 1;
         } else {
             usage("too many arguments");
         }
