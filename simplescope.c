@@ -8,15 +8,19 @@
 
 #include "argparse.h"
 
+// parsed arguments
+static struct {
+    unsigned long xlen;
+} args = {100000};
+
 double real_clock() {
     struct timeval now;
     gettimeofday(&now, NULL);
     return (double) now.tv_sec + (double) now.tv_usec / 1e6;
 }
 
-#define a_data 100000
-static float data[a_data];
-static size_t n_data = 0;
+static float* samples;
+static size_t current_sample = 0;
 
 void displayFunc(void) {
     // compute FPS
@@ -69,9 +73,9 @@ void displayFunc(void) {
     */
 
     glBegin(GL_LINE_STRIP);
-    for (size_t i = 0; i < a_data; i += 1) {
-        float x = (float) i / a_data;
-        float y = data[i];
+    for (size_t i = 0; i < args.xlen; i += 1) {
+        float x = (float) i / (float) args.xlen;
+        float y = samples[i];
         glVertex2f(x, y);
     }
     glEnd();
@@ -113,10 +117,10 @@ void* incoming_data_loop(void* arg) {
         if (value == EOF) {
             break;
         }
-        data[n_data] = ((float) value) / 256.f;
-        n_data += 1;
-        if (n_data >= a_data) {
-            n_data -= a_data;
+        samples[current_sample] = ((float) value) / 256.f;
+        current_sample += 1;
+        if (current_sample >= args.xlen) {
+            current_sample -= args.xlen;
         }
     }
 
@@ -130,6 +134,7 @@ static void argparse(int argc, char** argv) {
     "Draw a real-time graph\n"
     "\n"
     "  -h --help          display this help and exit\n"
+    "  -x --xlen N        width of the graph in data samples\n"
     );
 
     arginfo.argc = argc;
@@ -138,6 +143,8 @@ static void argparse(int argc, char** argv) {
         arginfo.arg = argv[arginfo.argi];
         if (arg_is("--help", "-h")) {
             usage(NULL);
+        } else if (arg_is("--xlen", "-x")) {
+            args.xlen = arg_get_uint();
         } else if (arginfo.arg[0] == '-') {
             usage("unknown option '%s'", arginfo.arg);
         } else {
@@ -147,16 +154,20 @@ static void argparse(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
-    for (size_t i = 0; i < a_data; i += 1) {
-        data[i] = .5f;
-    }
-
-    pthread_t incoming_data_thread;
-    pthread_create(&incoming_data_thread, NULL, incoming_data_loop, NULL);
-
     // arguments
     glutInit(&argc, argv);  // may remove some arguments
     argparse(argc, argv);
+
+    // collect samples into buffer within separate thread
+    samples = malloc(args.xlen * sizeof(float));
+    if (samples == NULL) {
+        usage("could not allocate enough memory for `samples`");
+    }
+    for (size_t i = 0; i < args.xlen; i += 1) {
+        samples[i] = .5f;
+    }
+    pthread_t incoming_data_thread;
+    pthread_create(&incoming_data_thread, NULL, incoming_data_loop, NULL);
 
     //  GLUT init
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_MULTISAMPLE);
