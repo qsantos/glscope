@@ -6,6 +6,8 @@
 #include <GL/gl.h>
 #include <GL/freeglut.h>
 
+#include "argparse.h"
+
 double real_clock() {
     struct timeval now;
     gettimeofday(&now, NULL);
@@ -122,6 +124,28 @@ void* incoming_data_loop(void* arg) {
     return NULL;
 }
 
+static void argparse(int argc, char** argv) {
+    usage_string = (
+    "Usage: %s [OPTIONS]\n"
+    "Draw a real-time graph\n"
+    "\n"
+    "  -h --help          display this help and exit\n"
+    );
+
+    arginfo.argc = argc;
+    arginfo.argv = argv;
+    for (arginfo.argi = 1; arginfo.argi < argc; arginfo.argi++) {
+        arginfo.arg = argv[arginfo.argi];
+        if (arg_is("--help", "-h")) {
+            usage(NULL);
+        } else if (arginfo.arg[0] == '-') {
+            usage("unknown option '%s'", arginfo.arg);
+        } else {
+            usage("too many arguments");
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     for (size_t i = 0; i < a_data; i += 1) {
         data[i] = .5f;
@@ -130,8 +154,11 @@ int main(int argc, char** argv) {
     pthread_t incoming_data_thread;
     pthread_create(&incoming_data_thread, NULL, incoming_data_loop, NULL);
 
+    // arguments
+    glutInit(&argc, argv);  // may remove some arguments
+    argparse(argc, argv);
+
     //  GLUT init
-    glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_MULTISAMPLE);
     glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
     glutInitWindowSize(1024, 768);
