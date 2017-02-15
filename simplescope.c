@@ -11,7 +11,8 @@
 // parsed arguments
 static struct {
     unsigned long xlen;
-} args = {100000};
+    int show_old_samples;
+} args = {100000, 1};
 
 double real_clock() {
     struct timeval now;
@@ -73,7 +74,8 @@ void displayFunc(void) {
     */
 
     glBegin(GL_LINE_STRIP);
-    for (size_t i = 0; i < args.xlen; i += 1) {
+    size_t last_sample = args.show_old_samples ? args.xlen : current_sample;
+    for (size_t i = 0; i < last_sample; i += 1) {
         float x = (float) i / (float) args.xlen;
         float y = samples[i];
         glVertex2f(x, y);
@@ -135,6 +137,8 @@ static void argparse(int argc, char** argv) {
     "\n"
     "  -h --help          display this help and exit\n"
     "  -x --xlen N        width of the graph in data samples\n"
+    "  -c --clear-old     clear screen when wrapping\n"
+    "  -k --keep-old      keep old samples on screen when\n"
     );
 
     arginfo.argc = argc;
@@ -145,6 +149,10 @@ static void argparse(int argc, char** argv) {
             usage(NULL);
         } else if (arg_is("--xlen", "-x")) {
             args.xlen = arg_get_uint();
+        } else if (arg_is("--clear-old", "-c")) {
+            args.show_old_samples = 0;
+        } else if (arg_is("--keep-old", "-k")) {
+            args.show_old_samples = 1;
         } else if (arginfo.arg[0] == '-') {
             usage("unknown option '%s'", arginfo.arg);
         } else {
