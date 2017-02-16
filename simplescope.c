@@ -61,8 +61,8 @@ void displayFunc(void) {
 
     // display graph
     // TODO: transfer only changed data (10M samples = 80MB/frame = 4.8GB/s)
-    glBufferData(GL_ARRAY_BUFFER, samples_memory_size, samples, GL_STATIC_DRAW);
-    glDrawArrays(GL_LINE_STRIP, 0, last_sample);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr) samples_memory_size, samples, GL_STATIC_DRAW);
+    glDrawArrays(GL_LINE_STRIP, 0, (GLsizei) last_sample);
 
     glutSwapBuffers();
     glutPostRedisplay();
