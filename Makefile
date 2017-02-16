@@ -6,7 +6,7 @@ TARGETS = simplescope singen unbin catrate
 all: $(TARGETS)
 
 simplescope: argparse.o
-singen:
+singen: argparse.o
 unbin:
 catrate:
 

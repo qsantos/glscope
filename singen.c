@@ -2,6 +2,13 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "argparse.h"
+
+// parsed arguments
+static struct {
+    long unsigned int period;
+} args = {1000};
+
 unsigned char float2byte(float x) {
     /* Map float range [-1, 1] to integer range [0, 255] */
     unsigned int r = (unsigned int) (x * 128.f + 128.f);
@@ -11,21 +18,51 @@ unsigned char float2byte(float x) {
     return (unsigned char) r;
 }
 
-int main(int argc, char** argv) {
-    unsigned int period = 100000;
-    unsigned char* points = malloc(period);
-    if (points == NULL) {
-        fprintf(stderr, "could not allocate enough memory for `points`");
-        return 1;
+static void argparse(int argc, char** argv) {
+    usage_string = (
+    "Usage: %s PERIOD\n"
+    "Generate data for a sine wave. PERIOD is the number of samples to\n"
+    "generate for each period.\n"
+    "\n"
+    "  -h --help          display this help and exit\n"
+    );
+
+    size_t positional_arguments_read = 0;
+    arginfo.argc = argc;
+    arginfo.argv = argv;
+    for (arginfo.argi = 1; arginfo.argi < argc; arginfo.argi++) {
+        arginfo.arg = argv[arginfo.argi];
+        if (arg_is("--help", "-h")) {
+            usage(NULL);
+        } else if (arginfo.arg[0] == '-') {
+            usage("unknown option '%s'", arginfo.arg);
+        } else if (positional_arguments_read == 0) {
+            args.period = strtoul(arginfo.arg, NULL, 0);
+            positional_arguments_read += 1;
+        } else {
+            usage("too many arguments");
+        }
     }
-    for (unsigned int i = 0; i < 1000; i += 1) {
-        float x = (float) i / (float) period * 6.283185307179586f;
+    if (positional_arguments_read < 1) {
+        usage("too few arguments");
+    }
+}
+
+int main(int argc, char** argv) {
+    argparse(argc, argv);
+
+    unsigned char* points = malloc(args.period);
+    if (points == NULL) {
+        usage("could not allocate enough memory for `points`");
+    }
+    for (unsigned int i = 0; i < args.period; i += 1) {
+        float x = (float) i / (float) args.period * 6.283185307179586f;
         unsigned char value = float2byte(sinf(x));
         points[i] = value;
     }
 
     while (1) {
-        fwrite(points, 1, period, stdout);
+        fwrite(points, 1, args.period, stdout);
         fflush(stdout);
     }
 
