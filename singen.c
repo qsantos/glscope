@@ -51,18 +51,22 @@ static void argparse(int argc, char** argv) {
 int main(int argc, char** argv) {
     argparse(argc, argv);
 
-    unsigned char* points = malloc(args.period);
+    size_t n_points = args.period;
+    while (n_points < (1<<15)) {
+        n_points *= 2;
+    }
+    unsigned char* points = malloc(n_points);
     if (points == NULL) {
         usage("could not allocate enough memory for `points`");
     }
-    for (unsigned int i = 0; i < args.period; i += 1) {
+    for (unsigned int i = 0; i < n_points; i += 1) {
         float x = (float) i / (float) args.period * 6.283185307179586f;
         unsigned char value = float2byte(sinf(x));
         points[i] = value;
     }
 
     while (1) {
-        fwrite(points, 1, args.period, stdout);
+        fwrite(points, 1, n_points, stdout);
         fflush(stdout);
     }
 
