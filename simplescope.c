@@ -29,6 +29,10 @@ static size_t current_sample = 0;  // this is the index of the last sample + 1
 static unsigned int samples_opengl_buffer_id;  // GPU memory used for samples
 #define SAMPLE(i) (samples[2*(i) + 1])  // accessing the i-th sample
 
+static int fullscreen = 0;
+static int windowed_width = 0;
+static int windowed_height = 0;
+
 void displayFunc(void) {
     // compute FPS
     static double previous = 0.;
@@ -84,6 +88,24 @@ void keyboardFunc(unsigned char k, int x, int y) {
 
     if (k == 0x1b) {  // escape
         glutLeaveMainLoop();
+    }
+}
+
+void specialFunc(int k, int x, int y) {
+    (void) x;
+    (void) y;
+    /* Handle special key presses (GLUT callback) */
+
+    if (k == GLUT_KEY_F11) {
+        if (fullscreen) {
+            glutReshapeWindow(windowed_width, windowed_height);
+            fullscreen = 0;
+        } else {
+            windowed_width = glutGet(GLUT_WINDOW_WIDTH);
+            windowed_height = glutGet(GLUT_WINDOW_HEIGHT);
+            glutFullScreen();
+            fullscreen = 1;
+        }
     }
 }
 
@@ -183,6 +205,7 @@ int main(int argc, char** argv) {
     // callbacks
     glutDisplayFunc(displayFunc);
     glutKeyboardFunc(keyboardFunc);
+    glutSpecialFunc(specialFunc);
     glutReshapeFunc(reshapeFunc);
 
     // OpenGL init
