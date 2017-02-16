@@ -70,9 +70,7 @@ void reshapeFunc(int width, int height) {
     // reset projection matrix
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    //// left, right, bottom, top, near far
-    //glOrtho(0.f, width, height, 0.f, -1.f, 10.f);
-    glOrtho(0.f, 1.f, 0.f, 1.f, -1.f, 10.f);
+    glOrtho(0.f, 1.f, 0.f, 1.f, -1.f, 10.f);  // left, right, bottom, top, near far
     glMatrixMode(GL_MODELVIEW);
 
     glutPostRedisplay();
@@ -181,12 +179,7 @@ int main(int argc, char** argv) {
     // callbacks
     glutDisplayFunc(displayFunc);
     glutKeyboardFunc(keyboardFunc);
-    //glutSpecialFunc(specialFunc);
     glutReshapeFunc(reshapeFunc);
-    //glutMotionFunc(motionFunc);
-    //glutPassiveMotionFunc(passiveMotionFunc);
-    //glutMouseFunc(mouseFunc);
-    //glutCloseFunc(closeFunc);
 
     // OpenGL init
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
