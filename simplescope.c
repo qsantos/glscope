@@ -10,7 +10,7 @@
 
 // parsed arguments
 static struct {
-    unsigned long xlen;
+    unsigned long samples_count;
     int show_old_samples;
     const char* file;
 } args = {100000, 1, NULL};
@@ -21,8 +21,12 @@ double real_clock() {
     return (double) now.tv_sec + (double) now.tv_usec / 1e6;
 }
 
-static float* samples;
-static size_t current_sample = 0;
+/* Storage of currently displayed samples */
+static size_t samples_memory_size;  // amount of memory used to store samples
+static float* samples;  // local memory used to store samples
+static size_t current_sample = 0;  // this is the index of the last sample + 1
+static unsigned int samples_opengl_buffer_id;  // GPU memory used for samples
+#define SAMPLE(i) (samples[2*(i) + 1])  // accessing the i-th sample
 
 void displayFunc(void) {
     // compute FPS
@@ -46,42 +50,14 @@ void displayFunc(void) {
     glClear(GL_COLOR_BUFFER_BIT);
     glLoadIdentity();
 
-    /* Draw the scene */
+    // save the number of samples to display *before* transfering them to the GPU
+    // new samples may be obtained between glBufferData() and glDrawArrays()
+    size_t last_sample = args.show_old_samples ? args.samples_count : current_sample;
 
-    /*
-    // pack data
-    size_t n_points = 1024;
-    float data_buffer[n_points*2];
-    for (size_t i = 0; i < n_points; i += 1) {
-        float x = ((float) i) * 2.f * M_PI / 1000.f;
-        float y = sinf(x);
-        data_buffer[2*i + 0] = x;
-        data_buffer[2*i + 1] = y;
-    }
-
-    // fill new buffer
-    unsigned int buffer_id;
-    glGenBuffers(1, &buffer_id);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer_id);;
-    glBufferData(GL_ARRAY_BUFFER, n_points*2*sizeof(float), data_buffer, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, buffer_id);
-    glVertexPointer(2, GL_FLOAT, 0, NULL);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glDrawArrays(GL_LINE_STRIP, 0, n_points);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    */
-
-    glBegin(GL_LINE_STRIP);
-    size_t last_sample = args.show_old_samples ? args.xlen : current_sample;
-    for (size_t i = 0; i < last_sample; i += 1) {
-        float x = (float) i / (float) args.xlen;
-        float y = samples[i];
-        glVertex2f(x, y);
-    }
-    glEnd();
+    // display graph
+    // TODO: transfer only changed data (10M samples = 80MB/frame = 4.8GB/s)
+    glBufferData(GL_ARRAY_BUFFER, samples_memory_size, samples, GL_STATIC_DRAW);
+    glDrawArrays(GL_LINE_STRIP, 0, last_sample);
 
     glutSwapBuffers();
     glutPostRedisplay();
@@ -131,10 +107,10 @@ void* incoming_data_loop(void* arg) {
         if (value == EOF) {
             break;
         }
-        samples[current_sample] = ((float) value) / 256.f;
+        SAMPLE(current_sample) = ((float) value) / 256.f;
         current_sample += 1;
-        if (current_sample >= args.xlen) {
-            current_sample -= args.xlen;
+        if (current_sample >= args.samples_count) {
+            current_sample -= args.samples_count;
         }
     }
 
@@ -161,7 +137,7 @@ static void argparse(int argc, char** argv) {
         if (arg_is("--help", "-h")) {
             usage(NULL);
         } else if (arg_is("--xlen", "-x")) {
-            args.xlen = arg_get_uint();
+            args.samples_count = arg_get_uint();
         } else if (arg_is("--clear-old", "-c")) {
             args.show_old_samples = 0;
         } else if (arg_is("--keep-old", "-k")) {
@@ -183,12 +159,15 @@ int main(int argc, char** argv) {
     argparse(argc, argv);
 
     // collect samples into buffer within separate thread
-    samples = malloc(args.xlen * sizeof(float));
+    samples_memory_size = args.samples_count * sizeof(float) * 2;
+    samples = malloc(samples_memory_size);
     if (samples == NULL) {
         usage("could not allocate enough memory for `samples`");
     }
-    for (size_t i = 0; i < args.xlen; i += 1) {
-        samples[i] = .5f;
+    for (size_t i = 0; i < args.samples_count; i += 1) {
+        samples[2*i + 0] = (float) i / (float) args.samples_count;
+        /* SAMPLE(i)     = .5f;*/
+        samples[2*i + 1] = .5f;
     }
     pthread_t incoming_data_thread;
     pthread_create(&incoming_data_thread, NULL, incoming_data_loop, NULL);
@@ -212,6 +191,10 @@ int main(int argc, char** argv) {
     // OpenGL init
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glLineWidth(3);
+    glGenBuffers(1, &samples_opengl_buffer_id);
+    glBindBuffer(GL_ARRAY_BUFFER, samples_opengl_buffer_id);
+    glVertexPointer(2, GL_FLOAT, 0, NULL);
+    glEnableClientState(GL_VERTEX_ARRAY);
 
     glutMainLoop();
 
