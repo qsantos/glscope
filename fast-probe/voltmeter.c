@@ -1,7 +1,3 @@
-#include <Arduino.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <avr/sleep.h>
 #include <core/c_USB.h>
 
 #define a_buffer 32
@@ -10,14 +6,6 @@ byte buffer1[a_buffer];
 byte* input_buffer = buffer0;
 byte* output_buffer = buffer1;
 int n_buffer;
-
-int xprintf(const char* format, ...) {
-    va_list va_args;
-    va_start(va_args, format);
-    char buffer[1024];
-    int length = vsnprintf(buffer, sizeof(buffer), format, va_args);
-    return USB_Send(CDC_TX, (uint8_t*) buffer, length);
-}
 
 void setup() {
     /* The following sets up ADC (Analog to Digital Conversion)
