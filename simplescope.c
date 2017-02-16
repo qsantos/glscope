@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -89,30 +90,33 @@ void keyboardFunc(unsigned char k, int x, int y) {
 void* incoming_data_loop(void* arg) {
     (void) arg;
 
-    FILE* f;
+    int fd;
     if (args.file != NULL) {
-        f = fopen(args.file, "r");
-        if (f == NULL) {
+        fd = open(args.file, O_RDONLY);
+        if (fd < 0) {
             usage("could not open file '%s'", args.file);
         }
     } else {
-        f = stdin;
+        fd = 0;
     }
 
     // read file until exhaustion
     while (1) {
-        int value = fgetc(f);
-        if (value == EOF) {
+        unsigned char values[1<<15];
+        ssize_t n_values = read(0, values, sizeof(values));
+        if (n_values < 0) {
             break;
         }
-        SAMPLE(current_sample) = ((float) value) / 256.f;
-        current_sample += 1;
-        if (current_sample >= args.samples_count) {
-            current_sample -= args.samples_count;
+        for (ssize_t i = 0; i < n_values; i += 1) {
+            SAMPLE(current_sample) = ((float) values[i]) / 256.f;
+            current_sample += 1;
+            if (current_sample >= args.samples_count) {
+                current_sample -= args.samples_count;
+            }
         }
     }
 
-    fclose(f);  // TODO: try and reconnect
+    close(fd);  // TODO: try and reconnect
     return NULL;
 }
 
