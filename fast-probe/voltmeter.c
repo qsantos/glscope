@@ -18,9 +18,9 @@ void setup() {
      * available at http://www.atmel.com/devices/ATMEGA32U4.aspx
      *
      * For reference Arduino's analogRead(0) sets:
-     * ADMUX = (0<<REFS1) | (1<<REFS0) | (0<<ADLAR) | B111;
-     * ADCSRA = (1<<ADEN) | (0<<ADSC) | (0<<ADATE) | (1<<ADIF) | (0<<ADIE) | B011;
-     * ADCSRC = (1<<ADHSM) | (0<<MUX5) | B000;
+     * ADMUX  = 0x47 = (0<<REFS1) | (1<<REFS0) | (0<<ADLAR) | B00111;
+     * ADCSRA = 0x97 = (1<< ADEN) | (0<< ADSC) | (0<<ADATE) | (1<<ADIF) | (0<<ADIE) | B111;
+     * ADCSRC = 0x00 = (0<<ADHSM) | (0<< MUX5) | B000;
      */
 
     /* 24.9.1 ADC Multiplexer Selection Register – ADMUX
